@@ -765,6 +765,23 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		}
 	}
 
+  .hero h1 { font-family: var(--font-display); font-weight:800; font-size:1.6rem; line-height:1.22; letter-spacing:-0.01em; color: var(--green-900); margin:0 0 8px; text-wrap:balance; }
+  .hero .sub { font-size:0.92rem; color: var(--muted); margin:0 0 20px; max-width:58ch; }
+  .qa-stack { border-top:2px solid var(--text); margin-top:4px; }
+  .qa-card { border-top:1px solid var(--border); }
+  .qa-card:first-of-type { border-top:none; }
+  .qa-card:last-of-type { border-bottom:2px solid var(--text); }
+  .qa-card > summary { list-style:none; cursor:pointer; padding:16px 2px; display:flex; gap:14px; align-items:baseline; }
+  .qa-card > summary::-webkit-details-marker { display:none; }
+  .qa-q { flex:1; display:flex; flex-direction:column; gap:3px; }
+  .qa-title { font-family: var(--font-display); font-weight:700; font-size:1.02rem; color: var(--text); }
+  .qa-teaser { font-size:0.82rem; color: var(--muted); }
+  .qa-count { font-family: var(--font-display); font-size:0.76rem; font-weight:700; flex:none; align-self:center;
+              background: var(--neutral-badge-bg); color: var(--neutral-badge-text); padding:4px 11px; border-radius:999px; font-variant-numeric:tabular-nums; }
+  .qa-count.has-activity { background: var(--pest-bg); color: var(--pest); }
+  .qa-body { padding:0 2px 18px; display:flex; flex-direction:column; gap:0; }
+  .qa-empty { font-size:0.86rem; color: var(--muted); font-style:italic; padding:2px 0 4px; }
+  .qa-inputs-note { font-size:0.85rem; color: var(--muted); margin:14px 0 10px; }
 </style>
 </head>
 <body>
@@ -861,19 +878,75 @@ svg.leaflet-image-layer.leaflet-interactive path {
     return ev;
   }
 
+  function classifyEvent(e){
+    var desc = (e.description || '').toLowerCase();
+    var cat = e.category;
+    if (e.pest_type === 'insect') return 'pest';
+    if (e.pest_type === 'disease') return 'disease';
+    if (desc.indexOf('thresh') !== -1 || desc.indexOf('harvest') !== -1 || cat === 'Harvesting') return 'harvest';
+    if (cat === 'Sowing' || cat === 'Field Preparation') return 'prep';
+    if (cat === 'Irrigation') return 'water';
+    if (cat === 'Weeding' || desc.indexOf('weeded') !== -1) return 'weeding';
+    if (desc.indexOf('nipped') !== -1 || desc.indexOf('tip-pruned') !== -1) return 'weeding';
+    if (cat === 'Spraying / Drenching') return 'nutrition';
+    return 'other';
+  }
+
+  var QA_DEFS = [
+    {key:'prep', title:'How did the season start?'},
+    {key:'nutrition', title:'What went onto the crop?'},
+    {key:'weeding', title:'Was the field weeded or tended?'},
+    {key:'pest', title:'Was there any pest trouble?'},
+    {key:'disease', title:'Was there any disease?'},
+    {key:'water', title:'How was it irrigated?'},
+    {key:'harvest', title:'What happened after harvest?'},
+    {key:'other', title:'Anything else logged?'}
+  ];
+
+  function teaserFor(key, events, fd){
+    var n = events.length;
+    if (key === 'prep') {
+      var sow = events.filter(function(e){ return e.category === 'Sowing'; })[0];
+      return n + (n === 1 ? ' task' : ' tasks') + (sow ? ', sown ' + sow.date : '');
+    }
+    if (key === 'nutrition') {
+      if (!n) return 'No spraying or drenching logged this season';
+      var inputCount = (fd.inputs_used || []).length;
+      return n + ' spray' + (n === 1 ? '' : 's') + ' & drench' + (n === 1 ? '' : 'es') + (inputCount ? ' · ' + inputCount + ' named input' + (inputCount === 1 ? '' : 's') : '');
+    }
+    if (key === 'weeding') {
+      return n ? (n + (n === 1 ? ' round' : ' rounds') + ' logged') : 'No weeding task logged this season';
+    }
+    if (key === 'pest') {
+      if (!n) return 'No pest-related task logged this season';
+      return n + (n === 1 ? ' task' : ' tasks') + ' — ' + (events[0].pest_label || 'pest monitoring/control');
+    }
+    if (key === 'disease') {
+      if (!n) return 'No disease-related task logged this season';
+      return n + (n === 1 ? ' task' : ' tasks') + ' — ' + (events[0].pest_label || 'disease control');
+    }
+    if (key === 'water') {
+      return n ? (n + ' irrigation round' + (n === 1 ? '' : 's') + ' logged') : 'No irrigation task logged this season';
+    }
+    if (key === 'harvest') {
+      var h = events[0];
+      return n + (n === 1 ? ' task' : ' tasks') + (h ? ', starting ' + h.date : '');
+    }
+    return n + (n === 1 ? ' task' : ' tasks');
+  }
+
   function renderFarm(farm){
     var fd = DATA.data[farm];
     contentEl.innerHTML = '';
     document.getElementById('pageTitle').textContent = 'Chickpea — ' + farm;
 
-    // ===== Section 1: Farm & Plot Details =====
+    // ===== Hero: farm facts =====
     var s1 = el('div', 'section');
-    var t1 = el('div', 'section-title');
-    t1.innerHTML = '<span class="num">1</span> Farm &amp; plot details';
-    s1.appendChild(t1);
     var card1 = el('div', 'card');
-    card1.appendChild(el('div', 'farm-title', fd.profile.name));
-    card1.appendChild(el('div', 'farm-code', (fd.profile.code || '') + ' · ' + (fd.profile.cluster_label || '')));
+    var hero = el('div', 'hero');
+    hero.appendChild(el('h1', null, 'Grown at ' + farm + ', over the 2025–26 season.'));
+    hero.appendChild(el('p', 'sub', 'Everything logged on this farm this season is below — tap any question to see the dated record.'));
+    card1.appendChild(hero);
 
     var grid = el('div', 'detail-grid');
     function addDetail(label, value, full){
@@ -882,8 +955,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
       d.appendChild(el('div', 'detail-value', value || '—'));
       grid.appendChild(d);
     }
+    addDetail('Grown by', fd.field_lead ? fd.field_lead.name : 'Not identified');
     addDetail('Farm area', fd.profile.area ? (fd.profile.area + ' ' + fd.profile.area_unit) : '—');
-    addDetail('Field lead (chickpea)', fd.field_lead ? fd.field_lead.name : 'Not identified');
     addDetail('Address', fd.profile.address, true);
     if (fd.profile.lat && fd.profile.lon) {
       addDetail('GPS coordinates', fd.profile.lat.toFixed(6) + ', ' + fd.profile.lon.toFixed(6), true);
@@ -947,48 +1020,66 @@ svg.leaflet-image-layer.leaflet-interactive path {
       }
     }
 
-    // ===== Section 2: Season story =====
+    // ===== Q&A cards, grouped by what was done =====
+    var buckets = {};
+    QA_DEFS.forEach(function(d){ buckets[d.key] = []; });
+    fd.timeline.forEach(function(e){
+      var k = classifyEvent(e);
+      if (!buckets[k]) buckets[k] = [];
+      buckets[k].push(e);
+    });
+
     var s2 = el('div', 'section');
-    var t2 = el('div', 'section-title');
-    t2.innerHTML = '<span class="num">2</span> The season, in order';
-    s2.appendChild(t2);
-    var card2 = el('div', 'card');
+    var stack = el('div', 'qa-stack');
+    QA_DEFS.forEach(function(def){
+      var events = buckets[def.key] || [];
+      if (def.key === 'other' && !events.length) return;
+      var card = document.createElement('details');
+      card.className = 'qa-card';
+      var summary = document.createElement('summary');
+      var q = el('div', 'qa-q');
+      q.appendChild(el('span', 'qa-title', def.title));
+      q.appendChild(el('span', 'qa-teaser', teaserFor(def.key, events, fd)));
+      summary.appendChild(q);
+      var isHighlighted = (def.key === 'pest' || def.key === 'disease') && events.length > 0;
+      summary.appendChild(el('span', 'qa-count' + (isHighlighted ? ' has-activity' : ''), String(events.length)));
+      card.appendChild(summary);
 
-    fd.timeline.forEach(function(e){ card2.appendChild(renderEvent(e)); });
-    s2.appendChild(card2);
-    contentEl.appendChild(s2);
-
-    // ===== Closing: what we inputted =====
-    if (fd.inputs_used.length) {
-      var s3 = el('div', 'section');
-      var t3 = el('div', 'section-title');
-      t3.innerHTML = '<span class="num">3</span> What went into this crop';
-      s3.appendChild(t3);
-      var card3 = el('div', 'card');
-      var p = el('p', null, 'Across the season\'s spraying, drenching and field-prep tasks, these inputs were named in the task log — tap one to see how it helps the crop:');
-      card3.appendChild(p);
-      var il = el('div', 'inputs-list');
-      var detail = el('div', 'input-detail', 'Tap an input above to see how it helps the crop.');
-      fd.inputs_used.forEach(function(pair){
-        var chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'input-chip';
-        chip.textContent = pair[0];
-        var cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = '×' + pair[1];
-        chip.appendChild(cnt);
-        chip.addEventListener('click', function(){
-          il.querySelectorAll('.input-chip').forEach(function(c){ c.classList.remove('active'); });
-          chip.classList.add('active');
-          var info = DATA.input_info && DATA.input_info[pair[0]];
-          detail.textContent = info || ('No further detail on file for ' + pair[0] + ' yet.');
+      var body = el('div', 'qa-body');
+      if (events.length) {
+        events.forEach(function(e){ body.appendChild(renderEvent(e)); });
+      } else {
+        body.appendChild(el('div', 'qa-empty', 'Nothing of this kind was logged for ' + farm + ' this season.'));
+      }
+      if (def.key === 'nutrition' && fd.inputs_used && fd.inputs_used.length) {
+        body.appendChild(el('p', 'qa-inputs-note', 'These inputs were named in the task log — tap one to see how it helps the crop:'));
+        var il = el('div', 'inputs-list');
+        var detail = el('div', 'input-detail', 'Tap an input above to see how it helps the crop.');
+        fd.inputs_used.forEach(function(pair){
+          var chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'input-chip';
+          chip.textContent = pair[0];
+          var cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = '×' + pair[1];
+          chip.appendChild(cnt);
+          chip.addEventListener('click', function(){
+            il.querySelectorAll('.input-chip').forEach(function(c){ c.classList.remove('active'); });
+            chip.classList.add('active');
+            var info = DATA.input_info && DATA.input_info[pair[0]];
+            detail.textContent = info || ('No further detail on file for ' + pair[0] + ' yet.');
+          });
+          il.appendChild(chip);
         });
-        il.appendChild(chip);
-      });
-      card3.appendChild(il);
-      card3.appendChild(detail);
-      s3.appendChild(card3);
-      contentEl.appendChild(s3);
-    }
+        body.appendChild(il);
+        body.appendChild(detail);
+      }
+      card.appendChild(body);
+      stack.appendChild(card);
+    });
+    var firstCard = stack.querySelector('.qa-card');
+    if (firstCard) firstCard.open = true;
+    s2.appendChild(stack);
+    contentEl.appendChild(s2);
   }
 
   function route(){
