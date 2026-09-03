@@ -91,7 +91,7 @@
   .photo-thumb:active img { opacity:0.75; }
   .photo-thumb img { display:block; width:100%; height:100%; object-fit:cover; }
   .lightbox { position:fixed; inset:0; background:rgba(10,14,8,0.86); display:flex; align-items:center;
-              justify-content:center; padding:32px 20px; z-index:1300; overflow-y:auto;
+              justify-content:center; padding:32px 20px; z-index:120; overflow-y:auto;
               opacity:0; visibility:hidden; pointer-events:none; transition:opacity .2s ease; }
   .lightbox.open { opacity:1; visibility:visible; pointer-events:auto; }
   .lightbox-media { position:relative; max-width:100%; max-height:100%; line-height:0; }
@@ -779,13 +779,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
 	}
 
   .qa-stack { border-top:2px solid var(--text); margin-top:4px; }
-  .qa-card { all:unset; box-sizing:border-box; display:flex; width:100%; gap:14px; align-items:baseline; cursor:pointer;
-    padding:13px 2px; border-top:1px solid var(--border); font-family:inherit; color:inherit; text-align:left;
-    -webkit-tap-highlight-color:transparent; transition:background-color .15s ease; }
+  .qa-card { border-top:1px solid var(--border); }
   .qa-card:first-of-type { border-top:none; }
   .qa-card:last-of-type { border-bottom:2px solid var(--text); }
-  .qa-card:active { background:rgba(31,143,79,0.06); }
-  .qa-card::after { content:'\203a'; font-size:1.2rem; font-weight:700; color:var(--brand-solid); flex:none; align-self:center; }
+  .qa-card > summary { list-style:none; cursor:pointer; padding:13px 2px; display:flex; gap:14px; align-items:baseline;
+    -webkit-tap-highlight-color:transparent; transition:background-color .15s ease; }
+  .qa-card > summary::-webkit-details-marker { display:none; }
+  .qa-card > summary::after { content:'\2304'; font-size:0.95rem; font-weight:700; color:var(--brand-solid); flex:none;
+    align-self:center; transition:transform .15s ease; }
+  .qa-card[open] > summary::after { transform:rotate(180deg); }
+  .qa-card > summary:active { background:rgba(31,143,79,0.06); }
   .qa-q { flex:1; display:flex; flex-direction:column; gap:3px; }
   .qa-title { font-family: var(--font-display); font-weight:700; font-size:1.02rem; color: var(--text); }
   .qa-teaser { font-size:0.82rem; color: var(--muted); }
@@ -796,20 +799,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .qa-count { font-family: var(--font-display); font-size:0.76rem; font-weight:700; flex:none; align-self:center;
               background: var(--neutral-badge-bg); color: var(--neutral-badge-text); padding:4px 11px; border-radius:999px; font-variant-numeric:tabular-nums; }
   .qa-count.has-activity { background: var(--pest-bg); color: var(--pest); }
-  .qa-body { padding:0; display:flex; flex-direction:column; gap:0; }
-  .qa-modal { position:fixed; inset:0; background:rgba(10,14,8,0.5); display:flex; align-items:flex-end; justify-content:center;
-    z-index:1200; opacity:0; visibility:hidden; pointer-events:none; transition:opacity .2s ease; }
-  .qa-modal.open { opacity:1; visibility:visible; pointer-events:auto; }
-  .qa-modal-sheet { background:var(--card); width:100%; max-width:520px; max-height:82vh; overflow-y:auto;
-    border-radius:18px 18px 0 0; box-shadow:0 -10px 40px rgba(0,0,0,0.28); padding:16px 18px 28px;
-    box-sizing:border-box; transform:translateY(28px); transition:transform .22s ease; }
-  .qa-modal.open .qa-modal-sheet { transform:translateY(0); }
-  .qa-modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
-    padding-bottom:12px; margin-bottom:6px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--card); }
-  .qa-modal-title { font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:var(--green-900); text-wrap:balance; }
-  .qa-modal-close { flex:none; background:var(--green-100); color:var(--green-900); border:none; width:32px; height:32px;
-    border-radius:50%; font-size:1rem; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .qa-modal-close:active { background:rgba(31,143,79,0.22); }
+  .qa-body { padding:0 2px 14px; display:flex; flex-direction:column; gap:0; }
   .details-collapse { overflow:hidden; transition:max-height .28s ease; }
   .qa-empty { font-size:0.86rem; color: var(--muted); font-style:italic; padding:2px 0 4px; }
   .qa-inputs-note { font-size:0.85rem; color: var(--muted); margin:14px 0 10px; }
@@ -933,29 +923,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   lightboxEl.addEventListener('click', function(ev){
     if (ev.target === lightboxEl || ev.target.classList.contains('lightbox-close')) closeLightbox();
   });
-  var qaModalEl = document.createElement('div');
-  qaModalEl.className = 'qa-modal';
-  qaModalEl.innerHTML = '<div class="qa-modal-sheet"><div class="qa-modal-head"><span class="qa-modal-title"></span><button type="button" class="qa-modal-close" aria-label="Close">\u2715</button></div><div class="qa-modal-body"></div></div>';
-  document.body.appendChild(qaModalEl);
-  var qaModalTitle = qaModalEl.querySelector('.qa-modal-title');
-  var qaModalBody = qaModalEl.querySelector('.qa-modal-body');
-  function openQaModal(title, bodyNode){
-    qaModalTitle.textContent = title;
-    qaModalBody.innerHTML = '';
-    qaModalBody.appendChild(bodyNode);
-    qaModalEl.classList.add('open');
-    qaModalBody.scrollTop = 0;
-    lockScroll();
-  }
-  function closeQaModal(){
-    qaModalEl.classList.remove('open');
-    unlockScroll();
-  }
-  qaModalEl.addEventListener('click', function(ev){
-    if (ev.target === qaModalEl || ev.target.classList.contains('qa-modal-close')) closeQaModal();
-  });
   window.addEventListener('keydown', function(ev){
-    if (ev.key === 'Escape') { closeLightbox(); closeQaModal(); }
+    if (ev.key === 'Escape') closeLightbox();
   });
 
   function el(tag, cls, text){
@@ -1293,9 +1262,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     QA_DEFS.forEach(function(def){
       var events = buckets[def.key] || [];
       if (!def.yesno && !events.length) return;
-      var card = document.createElement('button');
-      card.type = 'button';
+      var card = document.createElement('details');
       card.className = 'qa-card';
+      var summary = document.createElement('summary');
       var q = el('div', 'qa-q');
       q.appendChild(el('span', 'qa-title', def.title));
       var teaserText = teaserFor(def.key, events, fd);
@@ -1304,10 +1273,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
       } else {
         q.appendChild(el('span', 'qa-teaser', teaserText));
       }
-      card.appendChild(q);
+      summary.appendChild(q);
       var confirmedEvents = events.filter(function(e){ return (e.pest_label || '').toLowerCase().indexOf('monitoring') === -1; });
       var isHighlighted = (def.key === 'pest' || def.key === 'disease') && confirmedEvents.length > 0;
-      card.appendChild(el('span', 'qa-count' + (isHighlighted ? ' has-activity' : ''), String(events.length)));
+      summary.appendChild(el('span', 'qa-count' + (isHighlighted ? ' has-activity' : ''), String(events.length)));
+      card.appendChild(summary);
 
       var body = el('div', 'qa-body');
       if (events.length) {
@@ -1337,19 +1307,21 @@ svg.leaflet-image-layer.leaflet-interactive path {
         body.appendChild(il);
         body.appendChild(detail);
       }
-      card.addEventListener('click', function(){ openQaModal(def.title, body); });
+      card.appendChild(body);
+      enableSmoothDetails(card);
       stack.appendChild(card);
 
       if (def.key === 'prep' && INTERCROP_DATA[farm]) {
         var ic = INTERCROP_DATA[farm];
-        var icCard = document.createElement('button');
-        icCard.type = 'button';
+        var icCard = document.createElement('details');
         icCard.className = 'qa-card';
+        var icSummary = document.createElement('summary');
         var icQ = el('div', 'qa-q');
         icQ.appendChild(el('span', 'qa-title', 'What else grew alongside it?'));
         icQ.appendChild(el('span', 'qa-teaser', ic.teaser));
-        icCard.appendChild(icQ);
-        icCard.appendChild(el('span', 'qa-count', String(ic.chips.length)));
+        icSummary.appendChild(icQ);
+        icSummary.appendChild(el('span', 'qa-count', String(ic.chips.length)));
+        icCard.appendChild(icSummary);
         var icBody = el('div', 'qa-body');
         var icNote = el('div', 'intercrop-note');
         icNote.appendChild(el('p', null, ic.summary));
@@ -1358,10 +1330,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
         icNote.appendChild(icChips);
         icNote.appendChild(el('p', 'intercrop-general', ic.note || 'Intercropping a cereal or bulb crop with a legume like chickpea is common practice in this region.'));
         icBody.appendChild(icNote);
-        icCard.addEventListener('click', function(){ openQaModal('What else grew alongside it?', icBody); });
+        icCard.appendChild(icBody);
+        enableSmoothDetails(icCard);
         stack.appendChild(icCard);
       }
     });
+    var firstCard = stack.querySelector('.qa-card');
+    if (firstCard) firstCard.open = true;
     s2.appendChild(stack);
     contentEl.appendChild(s2);
   }
